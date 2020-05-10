@@ -5,21 +5,245 @@ output:
     keep_md: true
 ---
 
+This report will answer the questions which are part of this assignment
+
 
 ## Loading and preprocessing the data
 
+To load the data we must first unzip the data and create the data directory
+````{r}
+unzip("activity.zip", exdir = "data")
+```
+
+Next we can read the data
+
+```{r} 
+directory <- getwd()
+data <- read.csv(paste0(directory,"/data/activity.csv"), sep=",")
+```
+
+## What is mean total number of steps taken per day?
+To create the histogram of the total number of steps taken each day we need to get this data
+
+```{r message=FALSE} 
+library(dplyr)
+```
+
+```{r} 
+Sumperday <-
+  data %>%
+    group_by(date) %>%
+      summarize(Sumeveryday = sum(steps, na.rm = TRUE))
+```
+
+The histogram of the total number of steps taken each day
+
+```{r histogram, fig.height=4, echo=FALSE} 
+library(ggplot2)
+ggplot(data = Sumperday, aes(Sumeveryday)) + geom_histogram(binwidth = 245, col="blue") + theme_light(base_size = 12) + scale_x_continuous(name = "Total number of steps taken each day")
+```
 
 
 ## What is mean total number of steps taken per day?
 
+First we need to calculate this data
+```{r} 
+MeanMedianperday <-
+      data %>%
+          group_by(date) %>%
+             summarize(mean = mean(steps), median = median(steps))
+```
+
+```{r message=FALSE} 
+library(xtable)
+```
+
+```{r} 
+xt <- xtable(MeanMedianperday)
+print(xt, type = "html")
+```
 
 
 ## What is the average daily activity pattern?
 
+To make the plot we first need to convert the interval to minutes
+
+```{r} 
+tempa <- c(data$interval)
+tempb <- sprintf("%04d", tempa)
+data2 <- mutate(data, time = (format(strptime(tempb, format="%H%M"), format = "%H:%M")) )
+```
+
+
+Calculate the average number of steps for every 5 minutes
+```{r} 
+dataonlyintervalavg <-
+    data2 %>%
+      group_by(time) %>%
+        summarize(avgsteps = mean(steps, na.rm = TRUE))
+```
+ 
+
+```{r} 
+dataonlyintervalavg$time = as.POSIXct(hms::parse_hm(dataonlyintervalavg$time))
+```
+
+The  time series plot (type="l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+```{r plot, fig.height=4, fig.width=4, echo=FALSE} 
+plot(dataonlyintervalavg$time, dataonlyintervalavg$avgsteps, type = "l", col="blue", xlab = "time", ylab = "Average steps")
+```
+
+
+```{r echo=FALSE} 
+dataonlyintervalavg <-
+    data2 %>%
+      group_by(time) %>%
+        summarize(avgsteps = mean(steps, na.rm = TRUE))
+```
+
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r} 
+maxavgstepstime <- dataonlyintervalavg[which.max(dataonlyintervalavg$avgsteps), ] 
+print(maxavgstepstime[1])
+```
 
 
 ## Imputing missing values
 
+Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs 
+```{r} 
+NAinthisset <-is.na(data)
+table(NAinthisset)
+```
+
+Only for the steps column
+```{r} 
+NAinsteps <- is.na(data$steps)
+table(NAinsteps)
+```
+So we only miss values in the steps column
+
+The strategy I have choosen for filling in all of the missing values in the dataset is to fill with the value of the mean of that 5-minute interval
+
+To replace the NA's with the mean of the 5-minute interval
+Add interval to the dataonlyyintervalavg dataset (this dataset has the average)
+
+```{r} 
+temp <- c(data$interval)
+interval1day <- temp[1:288]
+
+  doiavg2 <-
+      dataonlyintervalavg %>%
+        mutate(interval = interval1day)
+  
+```
+
+Merging the intitial dataset with this new dataset to get for every interval also the 5 minute mean
+```{r} 
+newdata3 <- inner_join(data, doiavg2, by=c("interval"))
+```
+Imputing the missing data with the average of that time
+```{r} 
+newdata4 <-
+  newdata3  %>%
+    mutate(steps=ifelse(is.na(steps),(avgsteps), steps))
+```
+Removing all unnecessary columns
+```{r} 
+newdata5 <- subset(newdata4, select = c(steps, date, interval))
+```
+
+Are there any NAs in this new dataset
+```{r} 
+NAinnewdataset5 <-is.na(newdata5)
+table(NAinnewdataset5)
+```
+
+Histogram of the total number of steps taken each day
+```{r histogram2, fig.height=4, echo=FALSE} 
+library(ggplot2)
+ggplot(data = newdata5, aes(steps)) + geom_histogram(col="green") + scale_fill_gradient("count", low="green", high="red")
+```
+
+Calculate and report the mean and median total number of steps taken per day. 
+```{r} 
+MeanMedianperdaynewdata   <-
+    newdata5 %>%
+      group_by(date) %>%
+          summarize(mean = mean(steps), median = median(steps))
+
+xt2 <- xtable(MeanMedianperdaynewdata)
+print(xt2, type = "html")
+```
+
+If we compare the new values with the old then it is clear that we don't have any NA values anymore but the average and mean of a specific day is the same. Except of course if the previous data was NA.
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+Converting to a date format
+```{r echo=FALSE} 
+library(lubridate)     
+newdata5$date <- ymd(newdata5$date)
+```
+
+Getting the days of the week using the weekdays 
+```{r} 
+newdata6 <-
+    newdata5  %>%
+       mutate(weekday = weekdays(newdata5$date))
+```
+
+Converting the days to weekend or weekday
+```{r} 
+newdata7 <-
+    newdata6 %>% 
+      mutate(weekendornot = ifelse(newdata6$weekday %in% c("Saturday", "Sunday"), "weekend", "weekday"))
+```
+
+a panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
+
+
+Add the time to the dataset 
+```{r echo=FALSE} 
+tempa <- c(data$interval)
+tempb <- sprintf("%04d", tempa)
+newdata71 <- mutate(newdata7, time = (format(strptime(tempb, format="%H%M"), format = "%H:%M")))
+```
+
+Then split the data in weekday and weekend
+```{r} 
+newdata8 <- split(newdata71, newdata71$weekendornot)
+```
+
+
+The average number of steps for every 5 minutes for weekday
+```{r} 
+dataonlyintervalavgweekday <-
+  newdata8[[1]] %>%
+    group_by(time) %>%
+        summarize(avgsteps = mean(steps, na.rm = TRUE))
+```
+
+The average number of steps for every 5 minutes for a weekend
+```{r} 
+dataonlyintervalavgweekend <-
+  newdata8[[2]] %>%
+      group_by(time) %>%
+          summarize(avgsteps = mean(steps, na.rm = TRUE))
+```
+
+Make time of time for the plot
+```{r} 
+dataonlyintervalavgweekday$time = as.POSIXct(hms::parse_hm(dataonlyintervalavgweekday$time))
+dataonlyintervalavgweekend$time = as.POSIXct(hms::parse_hm(dataonlyintervalavgweekend$time))
+```
+
+The plot
+```{r plot3, fig.height=10, echo=FALSE}  
+par(mfrow=c(2,1))
+plot(dataonlyintervalavgweekend$time, dataonlyintervalavgweekend$avgsteps, type = "l", col="blue", xlab = "time", ylab = "Average steps in the weekend", main ="weekend")
+plot(dataonlyintervalavgweekday$time, dataonlyintervalavgweekday$avgsteps, type = "l", col="blue", xlab = "time", ylab = "Average steps on a weekday", main = "weekday")
+```
+

@@ -23,17 +23,7 @@ unzip("activity.zip", exdir = "data")
 directory <- getwd()
 data <- read.csv(paste0(directory,"/data/activity.csv"), sep=",")
 
-
-## Histogram of the total number of steps taken each day
-ggplot(data = data, aes(steps)) + geom_histogram(col="green") + scale_fill_gradient("count", low="green", high="red")
-
-
-## What is mean total number of steps taken per day?
-## For this part of the assignment, you can ignore the missing values in the dataset.
-## Make a histogram of the total number of steps taken each day
-## Calculate and report the mean and median total number of steps taken per day
-
-## New dataset with mean and median per day
+## Transform the data for the histogram and removing all the NA's in the steps
 library(dplyr)
 
 Sumperday <-
@@ -42,22 +32,20 @@ Sumperday <-
       summarize(Sumeveryday = sum(steps, na.rm = TRUE))
 
 ## Histogram of the total number of steps taken each day
-ggplot(data = Sumperday, aes(Sumeveryday)) + geom_histogram(col="green") + theme_light(base_size = 12)
+ggplot(data = Sumperday, aes(Sumeveryday)) + geom_histogram(binwidth = 245, col="blue") + theme_light(base_size = 12) + scale_x_continuous(name = "Total number of steps taken each day")
 
 ## Mean and median number of steps taken each day
-## Add extra column to the table
-Sumperday2 <-
-  data %>%
-    group_by(date) %>%
-      summarize(Sumeveryday = sum(steps, na.rm = TRUE), (Meaneveryday = mean(steps, na.rm = TRUE)))
-
-
-Sumperday3   <-
+MeanMedianperday <-
       data %>%
           group_by(date) %>%
-             summarize(sum(steps), mean(steps))
+             summarize(mean = mean(steps), median = median(steps))
 
-Sumperday3
+print(MeanMedianperday)
+
+library(xtable)
+xt <- xtable(MeanMedianperday)
+print(xt)
+
 
 ## What is the average daily activity pattern?
 ## Make a time series plot (i.e. \color{red}{\verb|type = "l"|}type="l") of the 5-minute interval (x-axis) 
@@ -78,12 +66,14 @@ tempa <- c(data$interval)
 tempb <- sprintf("%04d", tempa)
 data2 <- mutate(data, time = (format(strptime(tempb, format="%H%M"), format = "%H:%M")) )
 
+
 ## Give me the total steps for every 5 minutes -> wrong
 ## dataonlyinterval <-
 ##    data2 %>%
 ##      group_by(time) %>%
 ##        summarize(totsteps = sum(steps, na.rm = TRUE))
 
+library(dplyr)
 ## Give me the average number of steps for every 5 minutes
 dataonlyintervalavg <-
     data2 %>%
@@ -96,14 +86,11 @@ dataonlyintervalavg$time = as.POSIXct(hms::parse_hm(dataonlyintervalavg$time))
 ## The plot
 plot(dataonlyintervalavg$time, dataonlyintervalavg$avgsteps, type = "l", col="blue", xlab = "time", ylab = "Average steps")
 
-## or
-library(ggplot2)
-ggplot(data = dataonlyintervalavg, aes(x=time, y=avgsteps)) + geom_line(color = "blue", size =2)  + scale_x_datetime(date_labels = "%H:%M")
-
-
 ## Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
 maxavgstepstime <- dataonlyintervalavg[which.max(dataonlyintervalavg$avgsteps), ] ## Better to do this before transforming time
+print(maxavgstepstime[1])
 
+str()
 
 ## ## Imputing missing values
 ## Note that there are a number of days/intervals where there are missing values 
@@ -127,13 +114,78 @@ table(NAinsteps)
 ## Strategy 
 
 ## Create a new dataset that is equal to the original dataset but with the missing data filled in.
+## See article, I should use bCPA or FKM (fuzzy K-means) -> get to know how it works.
+## Let's start with the most simple -> mean for that 5-minute interval 
+## These values are already available dataonlyintervalavg
 
+library(imputeMissings)
+newdata <- impute(data)
+
+NAinnewdataset <-is.na(newdata)
+table(NAinnewdataset)
+
+## Comparing the two datasets
+write.csv(data, "data.csv")
+write.csv(newdata, "newdata.csv")
+## So all NA's are replaced with 0, I would like to use the 5-minute interval mean
+
+## To replace the NA's with the mean of the 5-minute interval
+## Add interval to the dataonlyyintervalavg dataset (this dataset has the average)
+
+interval1day <- temp[1:288]
+
+  doiavg2 <-
+      dataonlyintervalavg %>%
+        mutate(interval = interval1day)
+  
+
+## Merging the intitial dataset with this new dataset to get for every interval also the 5 minute mean
+newdata3 <- inner_join(data, doiavg2, by=c("interval"))
+
+## Imputing the missing data with the average of that time
+newdata4 <-
+  newdata3  %>%
+    mutate(steps=ifelse(is.na(steps),(avgsteps), steps))
+
+## Removing all unnecessary columns
+newdata5 <- subset(newdata4, select = c(steps, date, interval))
+
+## No more NA's
+NAinnewdataset5 <-is.na(newdata5)
+table(NAinnewdataset5)
+
+
+
+write.csv(newdata5, "newdata5.csv")
 
 
 ## Make a histogram of the total number of steps taken each day and Calculate and 
 ## report the mean and median total number of steps taken per day. 
 ## Do these values differ from the estimates from the first part of the assignment? 
 ## What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+## Histogram of the total number of steps taken each day
+library(ggplot2)
+ggplot(data = newdata5, aes(steps)) + geom_histogram(col="green") + scale_fill_gradient("count", low="green", high="red")
+
+
+## Calculate and report the mean and median total number of steps taken per day. 
+MeanMedianperdaynewdata   <-
+    newdata5 %>%
+      group_by(date) %>%
+          summarize(mean = mean(steps), median = median(steps))
+
+print(MeanMedianperdaynewdata)
+
+
+
+## Do these values differ from the estimates from the first part of the assignment? 
+write.csv(MeanMedianperdaynewdata, "MeanMedianperdaynewdata.csv")
+write.csv(MeanMedianperday, "MeanMedianperday.csv")
+## Only the days with NA's have no data
+
+## What is the impact of imputing missing data on the estimates of the total daily number of steps?
+## Nothing because that didn't change
 
 
 ## ## Are there differences in activity patterns between weekdays and weekends?
@@ -142,46 +194,73 @@ table(NAinsteps)
 
 ## Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating
 ## whether a given date is a weekday or weekend day.
+
+## Converting to a date format
+
+library(lubridate)
+newdata5$date <- ymd(newdata5$date)
+
+## Getting the days of the week using the weekdays function
+newdata6 <-
+    newdata5  %>%
+
+      mutate(weekday = weekdays(newdata5$date))
+
+## Converting the days to weekend or weekday
+newdata7 <-
+    newdata6 %>% 
+      mutate(weekendornot = ifelse(newdata6$weekday %in% c("Saturday", "Sunday"), "weekend", "weekday"))
+
+
 ## Make a panel plot containing a time series plot (i.e. \color{red}{\verb|type = "l"|}type="l") 
 ## of the 5-minute interval (x-axis) and the average number of steps taken, averaged 
 ## across all weekday days or weekend days (y-axis). 
 ## See the README file in the GitHub repository to see an example of what this plot should look like
 ## using simulated data.
 
-## Convert date to date format -> not yet necessary
-str(Sumperday)
-library(lubridate)
-(Sumperday$date <- ymd(Sumperday$date))
 
-library(xtable)
-xt <- xtable(summary(Sumperday))
+##  Add the time to the dataset 
+tempa <- c(data$interval)
+tempb <- sprintf("%04d", tempa)
+newdata71 <- mutate(newdata7, time = (format(strptime(tempb, format="%H%M"), format = "%H:%M")))
 
 
-xt2 <- xtable(summary(Sumperday$Sumeveryday))
+## Then split the data in weekday and weekend
+newdata8 <- split(newdata71, newdata71$weekendornot)
 
-## Histogrom of the total number of steps taken each day
-hist(Sumperday$date, Sumperday$SUmeveryday, col = "blue", breaks=61 , main="Total number of steps taken each day", xlab="Day", ylab = "Total number of steps")
-hist(SUmeveryday ~ date, data = Sumperday)
-
-
-library(RColorBrewer) 
-cols <- brewer.pal(11, "Spectral") 
-pal <- colorRampPalette(cols)
-
-barplot(SUmeveryday ~ date, data = Sumperday, xlab = "Date", col=pal(61), ylab = "Total number of steps", main = "Total number of steps taken each day") 
+## newdata8[[1]] -> weekday
+## newdata8[[2]] -> weekend
 
 
+
+## The average number of steps for every 5 minutes for weekday
+dataonlyintervalavgweekday <-
+  newdata8[[1]] %>%
+    group_by(time) %>%
+        summarize(avgsteps = mean(steps, na.rm = TRUE))
+
+
+## The average number of steps for every 5 minutes for a weekend
+dataonlyintervalavgweekend <-
+  newdata8[[2]] %>%
+      group_by(time) %>%
+          summarize(avgsteps = mean(steps, na.rm = TRUE))
+
+
+## Make time of time for the plot
+dataonlyintervalavgweekday$time = as.POSIXct(hms::parse_hm(dataonlyintervalavgweekday$time))
+dataonlyintervalavgweekend$time = as.POSIXct(hms::parse_hm(dataonlyintervalavgweekend$time))
+
+str(newdata8)
+## The plot
+
+par(mfrow=c(2,1))
+plot(dataonlyintervalavgweekend$time, dataonlyintervalavgweekend$avgsteps, type = "l", col="blue", xlab = "time", ylab = "Average steps in the weekend", main ="weekend")
+plot(dataonlyintervalavgweekday$time, dataonlyintervalavgweekday$avgsteps, type = "l", col="blue", xlab = "time", ylab = "Average steps on a weekday", main = "weekday")
+
+
+## or
 library(ggplot2)
-cols <- brewer.pal(11, "Spectral") 
-pal <- colorRampPalette(cols)
-ggplot(data = Sumperday, aes(SUmeveryday)) + geom_histogram(col="green") + scale_fill_gradient("count", low="green", high="red")
+ggplot(data = dataonlyintervalavgweekend, aes(x=time, y=avgsteps)) + geom_line(color = "blue", size =2)  + scale_x_datetime(date_labels = "%H:%M") 
 
 
-
-
-## Calculate and report the mean and median total number of steps taken per day
-
-Meanperday <-
-  data %>%
-  group_by(date) %>%
-  summarize(Meaneveryday = mean(steps, na.rm = TRUE))
