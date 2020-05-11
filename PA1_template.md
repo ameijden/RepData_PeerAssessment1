@@ -496,6 +496,12 @@ The  time series plot (type="l") of the 5-minute interval (x-axis) and the avera
 
 
 
+```r
+dataonlyintervalavg <-
+    data2 %>%
+      group_by(time) %>%
+        summarize(avgsteps = mean(steps, na.rm = TRUE))
+```
 
 Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
 
@@ -588,6 +594,11 @@ table(NAinnewdataset5)
 ```
 
 Histogram of the total number of steps taken each day
+
+```r
+library(ggplot2)
+ggplot(data = newdata5, aes(steps)) + geom_histogram(col="green") + scale_fill_gradient("count", low="green", high="red")
+```
 
 ```
 ## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
@@ -1001,7 +1012,11 @@ Another observation is that only for the dates we filled with data, there is now
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
-Converting to a date format
+Converting to a date format using the lubridate library
+
+```r
+library(lubridate)     
+```
 
 ```
 ## 
@@ -1018,6 +1033,10 @@ Converting to a date format
 ## The following objects are masked from 'package:base':
 ## 
 ##     date, intersect, setdiff, union
+```
+
+```r
+newdata5$date <- ymd(newdata5$date)
 ```
 
 Getting the days of the week using the weekdays 
@@ -1041,6 +1060,11 @@ a panel plot containing a time series plot of the 5-minute interval (x-axis) and
 
 Add the time to the dataset 
 
+```r
+tempa <- c(data$interval)
+tempb <- sprintf("%04d", tempa)
+newdata71 <- mutate(newdata7, time = (format(strptime(tempb, format="%H%M"), format = "%H:%M")))
+```
 
 Then split the data in weekday and weekend
 
@@ -1075,6 +1099,13 @@ dataonlyintervalavgweekend$time = as.POSIXct(hms::parse_hm(dataonlyintervalavgwe
 ```
 
 The plot
+
+```r
+par(mfrow=c(2,1))
+plot(dataonlyintervalavgweekend$time, dataonlyintervalavgweekend$avgsteps, type = "l", col="blue", xlab = "time", ylab = "Average steps in the weekend", main ="weekend")
+plot(dataonlyintervalavgweekday$time, dataonlyintervalavgweekday$avgsteps, type = "l", col="blue", xlab = "time", ylab = "Average steps on a weekday", main = "weekday")
+```
+
 ![](PA1_template_files/figure-html/plot3-1.png)<!-- -->
 
 As the graphs show there is a signifcant difference in activity during a weekday or in the weekend, as we would expect.

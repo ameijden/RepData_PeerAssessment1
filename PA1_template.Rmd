@@ -108,7 +108,7 @@ plot(dataonlyintervalavg$time, dataonlyintervalavg$avgsteps, type = "l", col="bl
 ```
 
 
-```{r echo=FALSE} 
+```{r} 
 dataonlyintervalavg <-
     data2 %>%
       group_by(time) %>%
@@ -174,7 +174,7 @@ table(NAinnewdataset5)
 ```
 
 Histogram of the total number of steps taken each day
-```{r histogram2, fig.height=4, echo=FALSE} 
+```{r histogram2, fig.height=4} 
 library(ggplot2)
 ggplot(data = newdata5, aes(steps)) + geom_histogram(col="green") + scale_fill_gradient("count", low="green", high="red")
 ```
@@ -203,8 +203,8 @@ Another observation is that only for the dates we filled with data, there is now
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
-Converting to a date format
-```{r echo=FALSE} 
+Converting to a date format using the lubridate library
+```{r} 
 library(lubridate)     
 newdata5$date <- ymd(newdata5$date)
 ```
@@ -223,11 +223,11 @@ newdata7 <-
       mutate(weekendornot = ifelse(newdata6$weekday %in% c("Saturday", "Sunday"), "weekend", "weekday"))
 ```
 
-a panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
+# Make a panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
 
 
 Add the time to the dataset 
-```{r echo=FALSE} 
+```{r} 
 tempa <- c(data$interval)
 tempb <- sprintf("%04d", tempa)
 newdata71 <- mutate(newdata7, time = (format(strptime(tempb, format="%H%M"), format = "%H:%M")))
@@ -262,7 +262,7 @@ dataonlyintervalavgweekend$time = as.POSIXct(hms::parse_hm(dataonlyintervalavgwe
 ```
 
 The plot
-```{r plot3, fig.height=10, echo=FALSE}  
+```{r plot3, fig.height=10}  
 par(mfrow=c(2,1))
 plot(dataonlyintervalavgweekend$time, dataonlyintervalavgweekend$avgsteps, type = "l", col="blue", xlab = "time", ylab = "Average steps in the weekend", main ="weekend")
 plot(dataonlyintervalavgweekday$time, dataonlyintervalavgweekday$avgsteps, type = "l", col="blue", xlab = "time", ylab = "Average steps on a weekday", main = "weekday")
