@@ -263,4 +263,49 @@ plot(dataonlyintervalavgweekday$time, dataonlyintervalavgweekday$avgsteps, type 
 library(ggplot2)
 ggplot(data = dataonlyintervalavgweekend, aes(x=time, y=avgsteps)) + geom_line(color = "blue", size =2)  + scale_x_datetime(date_labels = "%H:%M") 
 
+MeanMedianperday <-
+  data %>%
+  group_by(date) %>%
+  summarize(mean = mean(steps), median = median(steps)) 
 
+MeanMedianperdayX <-
+  MeanMedianperday %>%
+  mutate(mean2 = round(mean, digits = 2))
+
+
+
+Medianperday <-
+  data %>%
+  group_by(date) %>%
+  summarize( median = median(steps)) 
+
+
+Datafortablemeanmedianperday <- select(MeanMedianperdayX, -mean)
+
+Testround <- round(MeanMedianperday$mean, digits = 2)
+Testroundnew <- round(MeanMedianperdaynewdata, digits = 2)
+
+str(MeanMedianperday)
+
+
+MeanMedianperdaynewdatatest   <-
+  newdata5 %>%
+  group_by(date) %>%
+  round(summarize(mean = mean(steps), median = median(steps)), digits = 2)
+
+MeanMedianperdaynewdatatest <- round(MeanMedianperday$mean, digits = 2)
+
+Medianperdaynewdatatest   <-
+  newdata5 %>%
+  group_by(date) %>%
+  summarize(median = median(steps))
+
+MeanMedianRound <- round((MeanMedianperday[2:3]), digits = 2)
+
+
+RoundedMeanMedianperdaynewdata <-
+  MeanMedianperdaynewdata %>%
+  mutate(meanround = round(mean, digits = 2)) %>%
+  mutate(medianround = round(median, digits = 2))
+
+DatafortableRoundedmeanmedianperdaynewdata <- select(RoundedMeanMedianperdaynewdata, -c(mean, median))

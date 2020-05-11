@@ -51,16 +51,29 @@ First we need to calculate this data
 MeanMedianperday <-
       data %>%
           group_by(date) %>%
-             summarize(mean = mean(steps), median = median(steps))
+             summarize(mean = mean(steps), median = median(steps)) 
 ```
 
+To create a table which is well readable we need to load some libraries 
 ```{r message=FALSE} 
 library(xtable)
+library(htmltools)
+library(htmlTable)
 ```
 
+To make the table even better we only want to show the number with only 2 digits
 ```{r} 
-xt <- xtable(MeanMedianperday)
-print(xt, type = "html")
+RoundedMeanMedianperday <-
+  MeanMedianperday %>%
+  mutate(meanround = round(mean, digits = 2))
+
+DatafortableRoundedmeanmedianperday <- select(RoundedMeanMedianperday, -mean)
+```
+
+The table with median and mean total number of steps taken per day
+```{r} 
+xt <- xtable(DatafortableRoundedmeanmedianperday)
+htmlTable(xt, ctable=c("date", "meanround", "median"), caption= "Table with mean and median numbers of steps each day")
 ```
 
 
@@ -167,18 +180,26 @@ ggplot(data = newdata5, aes(steps)) + geom_histogram(col="green") + scale_fill_g
 ```
 
 Calculate and report the mean and median total number of steps taken per day. 
+Also we round this time both the mean and median to make the table look better
 ```{r} 
 MeanMedianperdaynewdata   <-
     newdata5 %>%
       group_by(date) %>%
           summarize(mean = mean(steps), median = median(steps))
 
-xt2 <- xtable(MeanMedianperdaynewdata)
-print(xt2, type = "html")
+RoundedMeanMedianperdaynewdata <-
+ MeanMedianperdaynewdata %>%
+  mutate(meanround = round(mean, digits = 2)) %>%
+    mutate(medianround = round(median, digits = 2))
+
+DatafortableRoundedmeanmedianperdaynewdata <- select(RoundedMeanMedianperdaynewdata, -c(mean, median))
+
+xt2 <- xtable(DatafortableRoundedmeanmedianperdaynewdata)
+htmlTable(xt2, ctable=c("date", "meanround", "medianround"), caption= "Table with mean and median numbers of steps each day after imputting missing values")
 ```
 
 If we compare the new values with the old then it is clear that we don't have any NA values anymore but the average and mean of a specific day is the same. Except of course if the previous data was NA.
-
+Another observation is that only for the dates we filled with data, there is now also a Median > 0. Of course this values is the same for all these dates because the missing data was for complete dates. 
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
@@ -247,3 +268,4 @@ plot(dataonlyintervalavgweekend$time, dataonlyintervalavgweekend$avgsteps, type 
 plot(dataonlyintervalavgweekday$time, dataonlyintervalavgweekday$avgsteps, type = "l", col="blue", xlab = "time", ylab = "Average steps on a weekday", main = "weekday")
 ```
 
+As the graphs show there is a signifcant difference in activity during a weekday or in the weekend, as we would expect.
